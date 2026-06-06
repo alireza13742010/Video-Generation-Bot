@@ -1,2 +1,10 @@
 # Video-Generation-Bot
-This is the video generation bot uding n8n
+Start by defining the end‑to‑end pipeline: a commit or pull request in your GitHub repository triggers a workflow that packages the user prompt and any per‑second descriptions into a validated payload. The workflow validates input (length, sentence structure, required fields) and then calls the video generation API, passing authentication credentials stored as encrypted secrets. The API returns a task identifier immediately and later provides the generated asset via a callback or a polling endpoint; the workflow records the task state and any intermediate metadata in the repository or an attached database.
+
+Next, implement the runtime interactions and error handling: the workflow should send a single, well‑formed JSON payload to the model endpoint and handle synchronous responses (task accepted / rejected) and asynchronous completion notifications. On completion, download the resulting video and any auxiliary files (thumbnails, logs, JSON metadata), verify checksums, and run lightweight post‑processing (transcoding, trimming, or watermarking) if needed. If validation fails or the provider reports an error, the workflow should mark the run as failed, attach the provider error message to the commit or issue, and optionally open a pull request with suggested fixes.
+
+Finally, store and expose results responsibly in your GitHub account: push generated artifacts to a dedicated branch or an artifacts folder, create a release or attach files to the workflow run, and update README or issue comments with the asset location and generation metadata. Protect secrets and rate‑limit usage by keeping API keys in encrypted repository secrets and by implementing quotas and retry/backoff logic in the workflow. Add monitoring and logging (workflow run status, cost/credit consumption, and failure rates) so you can iterate on prompts, detect regressions, and maintain reproducible, auditable video generation for collaborators.
+
+# Demo
+<img width="1544" height="486" alt="image" src="https://github.com/user-attachments/assets/3fa3ea60-b7ea-4ef3-9f92-dde9363a5415" />
+
