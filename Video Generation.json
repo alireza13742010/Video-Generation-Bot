@@ -1,0 +1,600 @@
+{
+  "name": "Video Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        176,
+        0
+      ],
+      "id": "3b3937a5-0596-4e26-bee1-ec912d85bc31",
+      "name": "Telegram Trigger",
+      "webhookId": "fe0034a0-ec46-411e-b3db-eb4701cceab6",
+      "credentials": {
+        "telegramApi": {
+          "id": "NM0XxFVQU1EYmIQf",
+          "name": "Video Generation"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=This is the user described input:  {{ $json.message.text }}",
+        "options": {
+          "systemMessage": "Use the following prompt as the input to the Wan 2.5 model inside your n8n workflow (e.g., in an HTTP Request or model node). It instructs Wan 2.5 to convert any user description into a 3‑second video storyboard, preserve the input style/tone, validate each second, and return a strict JSON object suitable for downstream n8n processing.\n\nCode\nSystem: You are Wan 2.5, an expert video prompt generator. Use only the provided user description and your internal knowledge. Produce a single JSON object only (no extra text, no explanation).\n\nTask: Convert the user's freeform description into a 3‑second video prompt (exactly 3 seconds: seconds 0, 1, 2). Follow the user's style and tone when writing per‑second descriptions. Validate each per‑second description using these rules:\n  1. Non-empty.\n  2. At least three words.\n  3. A coherent sentence that begins with a capital letter and ends with a period.\n\nIf the user input is ambiguous, make one explicit assumption and incorporate it into the description(s) for the relevant second(s). If any second fails validation, set \"all_descriptions_valid\": false and include a \"failed_seconds\" array listing the integer seconds that failed. Do not attempt to generate video files; only produce the JSON.\n\nOutput schema (must be followed exactly):\n{\n  \"duration_seconds\": 3,\n  \"segments\": [\n    { \"second\": 0, \"description\": \"string\", \"valid\": true|false },\n    { \"second\": 1, \"description\": \"string\", \"valid\": true|false },\n    { \"second\": 2, \"description\": \"string\", \"valid\": true|false }\n  ],\n  \"all_descriptions_valid\": true|false,\n  \"failed_seconds\": [ /* integers of failed seconds, empty array if none */ ]\n}\n\nBehavior rules:\n- Each \"description\" must be a single sentence matching the validation rules.\n- Preserve the user's style and tone when composing the three descriptions.\n- If the user input cannot reasonably be converted into three valid per‑second sentences, set \"all_descriptions_valid\": false and list the failing seconds in \"failed_seconds\".\n- If you make an assumption to resolve ambiguity, include that assumption inside the affected \"description\" sentence (do not add extra fields).\n- Return only the JSON object and nothing else.\n\nUser input: <<INSERT USER DESCRIPTION HERE>>\nHow to use in n8n\n\nReplace <<INSERT USER DESCRIPTION HERE>> with the incoming text (use an expression to inject the node output).\n\nSend this prompt to Wan 2.5 and parse the returned JSON in the next n8n node.\n\nBranch on {{$json[\"all_descriptions_valid\"]}} to decide whether to proceed to video generation or return an error to the user."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "7afd5dd7-a193-4eac-a990-e7bf6b9d7ce6",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id }}",
+        "contextWindowLength": 2000
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        512,
+        192
+      ],
+      "id": "03fe0d79-e9c3-45a8-a786-df2b206669f9",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d8e08abe-8581-4a46-884c-b70a0ed57730",
+              "leftValue": "={{ $json.all_descriptions_valid }}",
+              "rightValue": "True",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        832,
+        0
+      ],
+      "id": "38ffe422-7aef-483b-b5b2-55dd96c5de55",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst all_descriptions_valid = items.every(\n  (item) => item?.json?.output === \"valid\",\n);\nreturn { all_descriptions_valid };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "1b170eb6-7dbf-42ad-8e64-0eab13f014a5",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1536,
+        0
+      ],
+      "id": "3d871501-cc1f-4666-8f32-dbcfa23a463d",
+      "name": "Merge"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2000,
+        0
+      ],
+      "id": "ac419033-ae5d-4630-a542-0900f2b53919",
+      "name": "Wait",
+      "webhookId": "f8b6a576-a2aa-406d-8998-3b7342e32587"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "de06bb56-5915-4dc5-9ebd-3c0e1d04d7c0",
+              "leftValue": "={{ $json.data.state }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2336,
+        0
+      ],
+      "id": "4502432b-90bd-423d-ab8c-a4a48e3d4b84",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "714ed3d2-1e81-4aae-a977-8151769371a7",
+              "name": "video_url",
+              "value": "={{ JSON.parse($json.data.resultJson).resultUrls[0] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2528,
+        -16
+      ],
+      "id": "6b1b9356-313c-4710-9b4a-a5a77cef063a",
+      "name": "Video URL"
+    },
+    {
+      "parameters": {
+        "operation": "sendVideo",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "file": "={{ $json.video_url }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2704,
+        -16
+      ],
+      "id": "2a9a3810-5d83-4dc6-802a-50b7e2519dc8",
+      "name": "Send a video",
+      "webhookId": "007ee0cb-2fc0-4dc3-a453-591fb4862991",
+      "credentials": {
+        "telegramApi": {
+          "id": "NM0XxFVQU1EYmIQf",
+          "name": "Video Generation"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/api/v1/jobs/createTask",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer e28736c62d62a9e76d5f6ce547d7f512"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"wan/2-2-a14b-text-to-video-turbo\",\n  \"callBackUrl\": \"https://your-domain.com/api/callback\",\n  \"input\": {\n    \"prompt\": {{ $json.result.text.toJsonString() }},\n    \"resolution\": \"480p\",\n    \"aspect_ratio\": \"16:9\",\n    \"enable_prompt_expansion\": false,\n    \"seed\": 0,\n    \"acceleration\": \"none\",\n    \"nsfw_checker\": false\n  }\n}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1760,
+        0
+      ],
+      "id": "cd5a64b1-fd13-45f7-9deb-a4bf9449dc15",
+      "name": "Sending the Proper Prompt to the Wan 2.2 14 billions"
+    },
+    {
+      "parameters": {
+        "url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $('Sending the Proper Prompt to the Wan 2.2 14 billions').item.json.data.taskId }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer e28736c62d62a9e76d5f6ce547d7f512"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2160,
+        0
+      ],
+      "id": "d81564a2-1152-48cd-8a32-9e2c37da5645",
+      "name": "Downlosding the Result Back from KIE AI"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.4-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5.4-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        368,
+        192
+      ],
+      "id": "46a6375f-b7b8-405c-bc81-23976bb583da",
+      "name": "GPT 5.4 mini",
+      "credentials": {
+        "openAiApi": {
+          "id": "ndPvXOP8jOGuywHm",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.4-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5.4-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1104,
+        416
+      ],
+      "id": "ed9a9db5-10b0-4f79-8e0c-a95586d3af36",
+      "name": "GPT 5.4 nano",
+      "credentials": {
+        "openAiApi": {
+          "id": "ndPvXOP8jOGuywHm",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $('AI Agent').item.json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        912,
+        240
+      ],
+      "id": "519ec5cc-2a83-4598-a240-f8d8586964a8",
+      "name": "Send an alert text to the users",
+      "webhookId": "c224bc3e-a0ae-4506-a126-ce9237e6539e",
+      "credentials": {
+        "telegramApi": {
+          "id": "NM0XxFVQU1EYmIQf",
+          "name": "Video Generation"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+        "text": "=This is the revised prompt for generation video: \n{{ $json.output.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "disable_notification": false,
+          "disable_web_page_preview": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1408,
+        224
+      ],
+      "id": "9cef42b3-c4fc-42d8-9970-21f6de50aaaf",
+      "name": "Sending the revised prompts to the users",
+      "webhookId": "4336bb62-8688-49bf-8185-549dfaa7d6c3",
+      "credentials": {
+        "telegramApi": {
+          "id": "NM0XxFVQU1EYmIQf",
+          "name": "Video Generation"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=This is the erro:  {{ $('AI Agent').item.json.output }}",
+        "options": {
+          "systemMessage": "System: You are Wan prompt for vidoe genration agent, an expert video prompt validator and formatter. Use only the provided user input. Require the user to submit one concise overall prompt and a per‑second description for every second of the video; the total duration must be an integer ≤ 10.\n\nValidation rules for each per‑second description:\n  1. Non‑empty.\n  2. At least three words.\n  3. A coherent sentence that begins with a capital letter and ends with a period.\n\nTask: Convert and validate the input into a JSON **array named \"segments\" only**. Do not emit any other top‑level keys, metadata, commentary, or text. The output must be exactly a JSON array with one object per second in ascending order.\n\nOutput schema (must be followed exactly; return only this JSON array and nothing else):\n[\n  { \"second\": 0, \"description\": \"string\", \"valid\": true|false },\n  { \"second\": 1, \"description\": \"string\", \"valid\": true|false },\n  ...\n]\n\nBehavior rules:\n- Produce one array element for each second from 0 up to duration_seconds - 1.\n- For each element, set \"description\" to the per‑second sentence (or an empty string if missing) and \"valid\" to true only if that sentence meets all three validation rules; otherwise set \"valid\" to false.\n- If the input is ambiguous, make one explicit assumption and incorporate that assumption into the affected \"description\" sentence (do not add extra fields).\n- If the model or provider does not support the requested task, return an empty JSON array (`[]`) and nothing else.\n- Return only the JSON array and nothing else.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1104,
+        240
+      ],
+      "id": "d9052f7b-2483-42e6-aeb2-18a493d79d11",
+      "name": "AI Agent revision"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send an alert text to the users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Sending the Proper Prompt to the Wan 2.2 14 billions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Downlosding the Result Back from KIE AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Video URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video URL": {
+      "main": [
+        [
+          {
+            "node": "Send a video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sending the Proper Prompt to the Wan 2.2 14 billions": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Downlosding the Result Back from KIE AI": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT 5.4 mini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT 5.4 nano": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent revision",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an alert text to the users": {
+      "main": [
+        [
+          {
+            "node": "AI Agent revision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sending the revised prompts to the users": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "AI Agent revision": {
+      "main": [
+        [
+          {
+            "node": "Sending the revised prompts to the users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f7b74791-2f83-4c2b-a99f-5f16b0c0e7a4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "93c9bc196c2ef21fe48c665a052fa13342d5a5fece59d408e8139da80c256355"
+  },
+  "id": "t3ADKHE3TLvvc22x",
+  "tags": []
+}
